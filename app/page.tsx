@@ -191,15 +191,7 @@ function Sidebar({
   return (
       <div className="w-64 border-r flex flex-col shrink-0 bg-muted/20">
         <div className="flex items-center justify-between px-3 py-3 border-b">
-          <a
-            href="/profile"
-            className="flex items-center gap-2 min-w-0"
-          >
-            <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <User className="size-3.5 text-primary" />
-            </div>
-            <span className="text-sm font-medium truncate">{userName}</span>
-          </a>
+          <span className="text-sm font-semibold tracking-tight">Olive Chat</span>
           <div className="flex gap-1">
             <Button size="icon-xs" variant="ghost" onClick={onNew} title="New conversation">
               <Plus className="size-3.5" />
@@ -250,13 +242,16 @@ function Sidebar({
           )}
         </div>
 
-        <div className="p-2 border-t">
+        <div className="border-t">
           <a
             href="/profile"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5 rounded-lg hover:bg-muted"
+            className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/50 transition-colors"
           >
-            <Settings className="size-3" />
-            Profile
+            <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <User className="size-3.5 text-primary" />
+            </div>
+            <span className="text-sm font-medium truncate flex-1">{userName}</span>
+            <Settings className="size-3 text-muted-foreground" />
           </a>
         </div>
       </div>
