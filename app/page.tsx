@@ -192,14 +192,9 @@ function Sidebar({
       <div className="w-64 border-r flex flex-col shrink-0 bg-muted/20">
         <div className="flex items-center justify-between px-3 py-3 border-b">
           <span className="text-sm font-semibold tracking-tight">Olive Chat</span>
-          <div className="flex gap-1">
-            <Button size="icon-xs" variant="ghost" onClick={onNew} title="New conversation">
-              <Plus className="size-3.5" />
-            </Button>
-            <Button size="icon-xs" variant="ghost" onClick={onLogout} title="Sign out">
-              <LogOut className="size-3.5" />
-            </Button>
-          </div>
+          <Button size="icon-xs" variant="ghost" onClick={onNew} title="New conversation">
+            <Plus className="size-3.5" />
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -243,16 +238,24 @@ function Sidebar({
         </div>
 
         <div className="border-t">
-          <a
-            href="/profile"
-            className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/50 transition-colors"
-          >
-            <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <User className="size-3.5 text-primary" />
+          <div className="flex items-center gap-2.5 px-3 py-2.5">
+            <a href="/profile" className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <User className="size-3.5 text-primary" />
+              </div>
+              <span className="text-sm font-medium truncate">{userName}</span>
+            </a>
+            <div className="flex gap-1 shrink-0">
+              <Button size="icon-xs" variant="ghost" onClick={onLogout} title="Sign out">
+                <LogOut className="size-3.5" />
+              </Button>
+              <a href="/profile">
+                <Button size="icon-xs" variant="ghost" title="Settings">
+                  <Settings className="size-3.5" />
+                </Button>
+              </a>
             </div>
-            <span className="text-sm font-medium truncate flex-1">{userName}</span>
-            <Settings className="size-3 text-muted-foreground" />
-          </a>
+          </div>
         </div>
       </div>
   );

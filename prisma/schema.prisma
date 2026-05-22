@@ -54,8 +54,37 @@ model InferenceLog {
   completion       String
   temperature      Float?
   maxTokens        Int?
+  finishReason     String?
+  requestId        String?
+  systemFingerprint String?
+  estimatedCostUsd Float?
+  status           String   @default("success")
+  errorType        String?
+  errorDetail      String?
   createdAt        DateTime @default(now())
 
-  message      Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message           Message             @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  conversation      Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  extractedMetadata ExtractedMetadata?
+}
+
+model ExtractedMetadata {
+  id               String   @id @default(cuid())
+  inferenceLogId   String   @unique
+  inferenceLog     InferenceLog @relation(fields: [inferenceLogId], references: [id], onDelete: Cascade)
+
+  ttftMs           Int?
+  apiLatencyMs     Int?
+  processingMs     Int?
+  modelVersion     String?
+  modelFamily      String?
+  userAgent        String?
+  appVersion       String?
+  environment      String?
+  errorCategory    String?
+  retryCount       Int?
+  promptCostUsd    Float?
+  completionCostUsd Float?
+
+  createdAt        DateTime @default(now())
 } 

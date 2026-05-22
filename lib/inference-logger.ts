@@ -24,7 +24,7 @@ export async function getLogs(options: {
   offset?: number;
   conversationId?: string;
   model?: string;
-  sortBy?: "createdAt" | "totalTokens" | "latencyMs";
+  sortBy?: "createdAt" | "totalTokens" | "latencyMs" | "estimatedCostUsd";
   sortOrder?: "asc" | "desc";
 }) {
   const {
@@ -46,7 +46,10 @@ export async function getLogs(options: {
       orderBy: { [sortBy]: sortOrder },
       take: limit,
       skip: offset,
-      include: { conversation: true },
+      include: {
+        conversation: { select: { id: true } },
+        extractedMetadata: true,
+      },
     }),
     prisma.inferenceLog.count({ where }),
   ]);
@@ -55,7 +58,7 @@ export async function getLogs(options: {
 }
 
 export async function getLogStats() {
-  const [totalLogs, totalTokens, avgLatency, modelBreakdown] =
+  const [totalLogs, totalTokens, avgLatency, modelBreakdown, costAgg, errorBreakdown] =
     await Promise.all([
       prisma.inferenceLog.count(),
       prisma.inferenceLog.aggregate({
@@ -71,6 +74,13 @@ export async function getLogStats() {
         _avg: { latencyMs: true },
         orderBy: { _count: { id: "desc" } },
       }),
+      prisma.inferenceLog.aggregate({
+        _sum: { estimatedCostUsd: true },
+      }),
+      prisma.inferenceLog.groupBy({
+        by: ["status"],
+        _count: { id: true },
+      }),
     ]);
 
   return {
@@ -78,8 +88,11 @@ export async function getLogStats() {
     totalTokens: totalTokens._sum.totalTokens ?? 0,
     totalPromptTokens: totalTokens._sum.promptTokens ?? 0,
     totalCompletionTokens: totalTokens._sum.completionTokens ?? 0,
+    totalCostUsd: Math.round((costAgg._sum.estimatedCostUsd ?? 0) * 1000000) / 1000000,
     avgLatencyMs: Math.round(avgLatency._avg.latencyMs ?? 0),
     avgTokensPerCall: Math.round(avgLatency._avg.totalTokens ?? 0),
+    successCount: errorBreakdown.find((e) => e.status === "success")?._count.id ?? 0,
+    errorCount: errorBreakdown.find((e) => e.status === "error")?._count.id ?? 0,
     modelBreakdown: modelBreakdown.map((m) => ({
       model: m.model,
       calls: m._count.id,

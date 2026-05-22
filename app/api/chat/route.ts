@@ -1,8 +1,17 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { chatCompletion, type OpenRouterMessage } from "@/lib/openrouter";
-import { logInference } from "@/lib/inference-logger";
+import {
+  InferenceSDK,
+  buildLogPayload,
+  type SDKMessage,
+} from "@/lib/inference-sdk";
+import { InferenceIngester } from "@/lib/inference-ingester";
 import { requireUser } from "@/lib/auth";
+
+const sdk = new InferenceSDK();
+const ingester = new InferenceIngester({
+  endpoint: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/ingest`,
+});
 
 export async function POST(req: NextRequest) {
   let user;
@@ -32,7 +41,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const userMsg = await prisma.message.create({
+  await prisma.message.create({
     data: {
       conversationId: conversation.id,
       role: "user",
@@ -46,58 +55,46 @@ export async function POST(req: NextRequest) {
     take: 20,
   });
 
-  const openrouterMessages: OpenRouterMessage[] = recentMessages.map((m) => ({
-    role: m.role as OpenRouterMessage["role"],
+  const sdkMessages: SDKMessage[] = recentMessages.map((m) => ({
+    role: m.role as SDKMessage["role"],
     content: m.content,
   }));
 
-  const start = Date.now();
-
-  let data;
   try {
-    data = await chatCompletion(openrouterMessages);
-  } catch (err) {
-    return Response.json(
-      { error: err instanceof Error ? err.message : "API call failed" },
-      { status: 502 },
-    );
-  }
-
-  const latencyMs = Date.now() - start;
-  const choice = data.choices[0];
-
-  const assistantMsg = await prisma.message.create({
-    data: {
+    const { data, metadata } = await sdk.chat(sdkMessages, {
       conversationId: conversation.id,
-      role: "assistant",
-      content: choice.message.content,
-    },
-  });
+    });
 
-  await logInference({
-    conversationId: conversation.id,
-    messageId: assistantMsg.id,
-    model: data.model,
-    provider: null,
-    promptTokens: data.usage.prompt_tokens,
-    completionTokens: data.usage.completion_tokens,
-    totalTokens: data.usage.total_tokens,
-    latencyMs,
-    prompt: openrouterMessages.map((m) => `${m.role}: ${m.content}`).join("\n"),
-    completion: choice.message.content,
-    temperature: null,
-    maxTokens: null,
-  });
+    const choice = data.choices[0];
 
-  return Response.json({
-    conversationId: conversation.id,
-    message: {
-      id: assistantMsg.id,
-      role: "assistant",
-      content: choice.message.content,
-    },
-    usage: data.usage,
-    model: data.model,
-    latencyMs,
-  });
+    const assistantMsg = await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        role: "assistant",
+        content: choice.message.content,
+      },
+    });
+
+    ingester.send(buildLogPayload(metadata, assistantMsg.id));
+
+    return Response.json({
+      conversationId: conversation.id,
+      message: {
+        id: assistantMsg.id,
+        role: "assistant",
+        content: choice.message.content,
+      },
+      usage: {
+        prompt_tokens: metadata.promptTokens,
+        completion_tokens: metadata.completionTokens,
+        total_tokens: metadata.totalTokens,
+      },
+      model: metadata.model,
+      latencyMs: metadata.latencyMs,
+    });
+  } catch (err) {
+    const errorMessage =
+      err instanceof Error ? err.message : "API call failed";
+    return Response.json({ error: errorMessage }, { status: 502 });
+  }
 }
