@@ -1,6 +1,1 @@
-import { getLogStats } from "@/lib/inference-logger";
-
-export async function GET() {
-  const stats = await getLogStats();
-  return Response.json(stats);
-}
+export { GET } from "@/features/logs/api/logs/stats/route";
